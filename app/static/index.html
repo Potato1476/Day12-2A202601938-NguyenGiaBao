@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="K3 Day 12: đưa AI agent từ localhost lên cloud với Docker, Redis, bảo mật và reliability."
+    />
+    <meta name="theme-color" content="#101012" />
+    <title>K3 Day 12 | Cloud Infrastructure Lab</title>
+    <link rel="icon" href="data:," />
+    <link rel="preload" href="/static/assets/cloud-agent-hero-v2.jpg" as="image" />
+    <link rel="stylesheet" href="/static/styles.css?v=4" />
+    <script src="/static/app.js?v=4" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Bỏ qua điều hướng</a>
+
+    <header class="site-header">
+      <nav class="nav shell" aria-label="Điều hướng chính">
+        <a class="brand" href="#top" aria-label="K3 Day 12 trang chủ">
+          <span class="brand-mark" aria-hidden="true">K3</span>
+          <span>Cloud Lab</span>
+        </a>
+        <div class="nav-links">
+          <a href="#outcomes">Mục tiêu</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#service">Service</a>
+        </div>
+        <a class="nav-cta" href="/docs">API docs</a>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section class="hero shell" id="top">
+        <div class="hero-copy reveal is-visible">
+          <p class="eyebrow">K3 / Ngày 12 / Cloud Infrastructure</p>
+          <h1>Từ localhost đến <em>production.</em></h1>
+          <p class="hero-lede">
+            Đóng gói AI agent, bảo vệ chi phí, scale bằng Redis và deploy lên cloud trong một buổi lab.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#checkpoints">Xem lộ trình</a>
+            <a class="button button-secondary" href="/docs">API docs</a>
+          </div>
+        </div>
+
+        <figure class="hero-media reveal reveal-delay is-visible">
+          <img
+            src="/static/assets/cloud-agent-hero-v2.jpg"
+            width="1400"
+            height="892"
+            alt="AI agent được đóng gói và kết nối từ laptop tới hạ tầng cloud"
+          />
+          <figcaption>
+            <span>Local agent</span>
+            <span>Container runtime</span>
+            <span>Cloud service</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="facts" aria-label="Thông số chính của bài lab">
+        <div class="shell fact-grid">
+          <div><strong>5</strong><span>checkpoint bắt buộc</span></div>
+          <div><strong>&lt;500 MB</strong><span>mục tiêu Docker image</span></div>
+          <div><strong>60 giây</strong><span>sliding rate window</span></div>
+          <div><strong>100 điểm</strong><span>toàn bộ phần chính</span></div>
+        </div>
+      </section>
+
+      <section class="section shell" id="outcomes">
+        <div class="section-heading reveal">
+          <h2>Một agent chạy được chưa phải là một service vận hành được.</h2>
+          <p>
+            Bài lab tập trung vào các lớp hạ tầng biến code Python thành một dịch vụ có thể bảo vệ, quan sát và mở rộng.
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="bento-cell bento-config reveal">
+            <span class="cell-kicker">12-Factor config</span>
+            <h3>Một image, nhiều môi trường.</h3>
+            <p>Port, API key, Redis URL và ngân sách được đọc từ environment. Secret thiếu sẽ fail fast.</p>
+            <code>AGENT_API_KEY=[required]</code>
+          </article>
+
+          <article class="bento-cell bento-security reveal">
+            <span class="cell-kicker">Security boundary</span>
+            <h3>Chặn trước khi gọi LLM.</h3>
+            <p>API key, rate limit và cost guard bảo vệ endpoint công khai khỏi bot và chi phí ngoài dự kiến.</p>
+            <div class="status-codes" aria-label="HTTP status bảo mật">
+              <span>401</span><span>429</span><span>402</span>
+            </div>
+          </article>
+
+          <article class="bento-cell bento-observe reveal">
+            <span class="cell-kicker">Structured logs</span>
+            <h3>Log để máy đọc.</h3>
+            <p>Mỗi event là một JSON object gọn trên một dòng, có timestamp, user và chi phí.</p>
+          </article>
+
+          <article class="bento-cell bento-docker reveal">
+            <span class="cell-kicker">Production container</span>
+            <h3>Multi-stage. Slim. Non-root.</h3>
+            <pre aria-label="Cấu trúc Dockerfile"><code>FROM python:3.11-slim AS builder
+COPY requirements.txt .
+RUN pip install --prefix=/install -r requirements.txt
+
+FROM python:3.11-slim AS runtime
+USER appuser</code></pre>
+          </article>
+
+          <article class="bento-cell bento-cloud reveal">
+            <div>
+              <span class="cell-kicker">Deployment output</span>
+              <h3>Một URL HTTPS hoạt động thật.</h3>
+            </div>
+            <p>Railway hoặc Render build trực tiếp từ Dockerfile, inject PORT và kiểm tra `/health` trước khi nhận traffic.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section checkpoint-section" id="checkpoints">
+        <div class="shell">
+          <div class="section-heading compact reveal">
+            <h2>Năm checkpoint, một đường lên production.</h2>
+            <p>Mỗi checkpoint khóa một nhóm rủi ro khác nhau và có test tự động làm tiêu chí hoàn thành.</p>
+          </div>
+
+          <div class="checkpoint-list">
+            <article class="checkpoint reveal">
+              <div class="cp-index">CP1</div>
+              <div><h3>Config, health và logging</h3><p>Tách config khỏi code, trả liveness và ghi log JSON.</p></div>
+              <div class="cp-output"><span>Output</span><strong>13 test</strong></div>
+              <div class="cp-score">15đ</div>
+            </article>
+            <article class="checkpoint reveal">
+              <div class="cp-index">CP2</div>
+              <div><h3>Docker production-ready</h3><p>Multi-stage build, user thường, healthcheck và Compose.</p></div>
+              <div class="cp-output"><span>Output</span><strong>Image 209 MB</strong></div>
+              <div class="cp-score">15đ</div>
+            </article>
+            <article class="checkpoint reveal">
+              <div class="cp-index">CP3</div>
+              <div><h3>API security</h3><p>Xác thực constant-time, sliding window và ngân sách tháng.</p></div>
+              <div class="cp-output"><span>Output</span><strong>22 test</strong></div>
+              <div class="cp-score">20đ</div>
+            </article>
+            <article class="checkpoint reveal">
+              <div class="cp-index">CP4</div>
+              <div><h3>Scaling và reliability</h3><p>State trong Redis, readiness riêng và graceful shutdown.</p></div>
+              <div class="cp-output"><span>Output</span><strong>3 replica</strong></div>
+              <div class="cp-score">20đ</div>
+            </article>
+            <article class="checkpoint reveal">
+              <div class="cp-index">CP5</div>
+              <div><h3>Cloud deployment</h3><p>Public HTTPS URL, Redis add-on và ảnh minh chứng.</p></div>
+              <div class="cp-output"><span>Output</span><strong>Live service</strong></div>
+              <div class="cp-score">15đ</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell architecture">
+        <figure class="architecture-media reveal">
+          <img
+            src="/static/assets/shared-state.jpg"
+            width="1536"
+            height="1024"
+            loading="lazy"
+            alt="Ba compute node dùng chung một lõi lưu trữ state"
+          />
+        </figure>
+        <div class="architecture-copy reveal">
+          <h2>Scale process, không chia cắt trí nhớ.</h2>
+          <p>
+            Ba agent replica có RAM riêng nhưng cùng đọc một lịch sử hội thoại trong Redis. Request có thể đi qua bất kỳ instance nào mà context vẫn liên tục.
+          </p>
+          <dl class="architecture-facts">
+            <div><dt>Lịch sử</dt><dd>20 message gần nhất</dd></div>
+            <div><dt>TTL</dt><dd>7 ngày tự dọn</dd></div>
+            <div><dt>Shutdown</dt><dd>SIGTERM có kiểm soát</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section service-section" id="service">
+        <div class="shell service-layout">
+          <div class="service-copy reveal">
+            <p class="eyebrow">Live service contract</p>
+            <h2>Kiểm tra chính instance đang phục vụ trang này.</h2>
+            <p>UI gọi trực tiếp các probe của FastAPI và hiển thị trạng thái thật, không dùng dữ liệu mẫu.</p>
+            <button class="button button-primary" id="refresh-status" type="button">Kiểm tra service</button>
+          </div>
+
+          <div class="service-panel reveal" aria-live="polite" aria-busy="true">
+            <div class="probe-row">
+              <div><code>GET /health</code><span>Process còn sống</span></div>
+              <strong id="health-status" class="probe-status is-loading">Đang kiểm tra</strong>
+            </div>
+            <div class="probe-row">
+              <div><code>GET /ready</code><span>Redis đã sẵn sàng</span></div>
+              <strong id="ready-status" class="probe-status is-loading">Đang kiểm tra</strong>
+            </div>
+            <div class="probe-row static-probe">
+              <div><code>POST /ask</code><span>Không có API key</span></div>
+              <strong class="probe-status">401 protected</strong>
+            </div>
+            <p id="probe-message" class="probe-message">Đang kết nối tới service...</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell final-section">
+        <div class="final-copy reveal">
+          <h2>Code xanh. Image gọn. Service sẵn sàng.</h2>
+          <p>Chạy test, xem OpenAPI contract hoặc kiểm tra toàn bộ điểm lab từ repository.</p>
+        </div>
+        <div class="command-block reveal">
+          <code id="grade-command">python grade.py</code>
+          <button id="copy-command" type="button">Sao chép lệnh</button>
+        </div>
+        <div class="final-links reveal">
+          <a href="/docs">API docs</a>
+          <a href="https://github.com/Potato1476/Day12-2A202601938-NguyenGiaBao">Xem repository</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p>K3 Day 12 / Cloud Infrastructure &amp; Deployment</p>
+        <p>Nguyễn Gia Bảo / 2A202601938</p>
+      </div>
+    </footer>
+  </body>
+</html>

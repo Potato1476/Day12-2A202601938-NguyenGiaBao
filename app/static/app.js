@@ -25,12 +25,14 @@ if (reduceMotion || !("IntersectionObserver" in window)) {
 const panel = document.querySelector(".service-panel");
 const healthStatus = document.querySelector("#health-status");
 const readyStatus = document.querySelector("#ready-status");
+const askStatus = document.querySelector("#ask-status");
 const probeMessage = document.querySelector("#probe-message");
 const refreshButton = document.querySelector("#refresh-status");
+const probeStatuses = [healthStatus, readyStatus, askStatus];
 
 function setLoading() {
   panel?.setAttribute("aria-busy", "true");
-  [healthStatus, readyStatus].forEach((element) => {
+  probeStatuses.forEach((element) => {
     if (!element) return;
     element.textContent = "Đang kiểm tra";
     element.className = "probe-status is-loading";
@@ -39,35 +41,72 @@ function setLoading() {
   if (refreshButton) refreshButton.disabled = true;
 }
 
-function setProbeResult(element, response, data) {
+function setProbeResult(element, result, isExpected) {
   if (!element) return;
-  const successful = response.ok;
-  element.textContent = successful
-    ? `${response.status} ${data.status}`
-    : `${response.status} ${data.status || "error"}`;
-  element.className = successful ? "probe-status" : "probe-status is-error";
+  if (!result.connected) {
+    element.textContent = "Không kết nối";
+    element.className = "probe-status is-error";
+    return;
+  }
+
+  const label = result.data?.status
+    || (result.status === 401 ? "protected" : "error");
+  element.textContent = `${result.status} ${label}`;
+  element.className = isExpected(result.status)
+    ? "probe-status"
+    : "probe-status is-error";
+}
+
+async function requestProbe(url, options = {}) {
+  try {
+    const response = await fetch(url, { cache: "no-store", ...options });
+    const contentType = response.headers.get("content-type") || "";
+    let data = null;
+    if (contentType.includes("application/json")) {
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = null;
+      }
+    }
+    return { connected: true, status: response.status, data };
+  } catch (error) {
+    return { connected: false, status: 0, data: null };
+  }
 }
 
 async function checkService() {
   setLoading();
   try {
-    const [healthResponse, readyResponse] = await Promise.all([
-      fetch("/health", { cache: "no-store" }),
-      fetch("/ready", { cache: "no-store" }),
+    const [healthResult, readyResult, askResult] = await Promise.all([
+      requestProbe("/health"),
+      requestProbe("/ready"),
+      requestProbe("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: "health probe" }),
+      }),
     ]);
-    const [healthData, readyData] = await Promise.all([
-      healthResponse.json(),
-      readyResponse.json(),
-    ]);
-    setProbeResult(healthStatus, healthResponse, healthData);
-    setProbeResult(readyStatus, readyResponse, readyData);
+
+    setProbeResult(healthStatus, healthResult, (status) => status === 200);
+    setProbeResult(readyStatus, readyResult, (status) => status === 200);
+    setProbeResult(askStatus, askResult, (status) => status === 401);
+
     if (probeMessage) {
-      probeMessage.textContent = healthResponse.ok && readyResponse.ok
-        ? "Process và Redis đang sẵn sàng nhận traffic."
-        : "Service phản hồi nhưng chưa sẵn sàng. Kiểm tra Redis và lifecycle.";
+      if (!healthResult.connected) {
+        probeMessage.textContent = "Không thể gọi service. Hãy thử lại sau khi deployment khởi động.";
+      } else if (healthResult.status !== 200) {
+        probeMessage.textContent = "Process đang phản hồi lỗi. Kiểm tra deployment logs.";
+      } else if (readyResult.status !== 200) {
+        probeMessage.textContent = "Process đang sống nhưng Redis hoặc cấu hình runtime chưa sẵn sàng.";
+      } else if (askResult.status !== 401) {
+        probeMessage.textContent = "Redis đã sẵn sàng nhưng lớp xác thực API đang phản hồi sai.";
+      } else {
+        probeMessage.textContent = "Process, Redis và lớp xác thực đang sẵn sàng nhận traffic.";
+      }
     }
   } catch (error) {
-    [healthStatus, readyStatus].forEach((element) => {
+    probeStatuses.forEach((element) => {
       if (!element) return;
       element.textContent = "Không kết nối";
       element.className = "probe-status is-error";

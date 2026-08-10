@@ -12,7 +12,7 @@
     <link rel="icon" href="data:," />
     <link rel="preload" href="/static/assets/cloud-agent-hero-v2.jpg" as="image" />
     <link rel="stylesheet" href="/static/styles.css?v=4" />
-    <script src="/static/app.js?v=4" defer></script>
+    <script src="/static/app.js?v=5" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Bỏ qua điều hướng</a>
@@ -205,9 +205,9 @@ USER appuser</code></pre>
               <div><code>GET /ready</code><span>Redis đã sẵn sàng</span></div>
               <strong id="ready-status" class="probe-status is-loading">Đang kiểm tra</strong>
             </div>
-            <div class="probe-row static-probe">
+            <div class="probe-row">
               <div><code>POST /ask</code><span>Không có API key</span></div>
-              <strong class="probe-status">401 protected</strong>
+              <strong id="ask-status" class="probe-status is-loading">Đang kiểm tra</strong>
             </div>
             <p id="probe-message" class="probe-message">Đang kết nối tới service...</p>
           </div>

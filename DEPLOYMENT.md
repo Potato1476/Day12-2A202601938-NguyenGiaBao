@@ -18,8 +18,8 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | Không có — dùng local fallback tại `http://localhost:8000` |
-| Platform | Render dự kiến; hiện kiểm chứng bằng Docker Compose local fallback |
+| Public URL | https://day12-agent-production-2b44.up.railway.app |
+| Platform | Railway |
 | Ngày deploy | 2026-08-10 |
 
 ## Biến Môi Trường Đã Cấu Hình
@@ -28,31 +28,31 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 
 | Biến | Đã set | Ghi chú |
 |------|--------|---------|
-| `PORT` | ✅ | 8000 trong local fallback; cloud sẽ tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong file `.env` không được commit; không ghi giá trị tại đây |
-| `REDIS_URL` | ✅ | Redis service của Docker Compose; khi lên Render dùng Redis add-on |
+| `PORT` | ✅ | Railway tự gán khi khởi động container |
+| `AGENT_API_KEY` | ✅ | Railway Variables; không ghi giá trị tại đây |
+| `REDIS_URL` | ✅ | Railway Redis service reference |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
 
 ## Lệnh Kiểm Tra
 
-Trong lần kiểm chứng local fallback, URL được thay bằng `http://localhost:8000`:
+Kiểm chứng trực tiếp service public trên Railway:
 
 ```bash
 # 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i http://localhost:8000/health
+curl -i https://day12-agent-production-2b44.up.railway.app/health
 
 # 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i http://localhost:8000/ready
+curl -i https://day12-agent-production-2b44.up.railway.app/ready
 
 # 3. Không có API key — mong đợi 401
-curl -i -X POST http://localhost:8000/ask \
+curl -i -X POST https://day12-agent-production-2b44.up.railway.app/ask \
   -H "Content-Type: application/json" \
   -d '{"question":"Hello"}'
 
 # 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST http://localhost:8000/ask \
+curl -i -X POST https://day12-agent-production-2b44.up.railway.app/ask \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $AGENT_API_KEY" \
   -H "X-User-Id: sv-test" \
@@ -60,7 +60,7 @@ curl -i -X POST http://localhost:8000/ask \
 
 # 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
 for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST http://localhost:8000/ask \
+  curl -s -o /dev/null -w "%{http_code} " -X POST https://day12-agent-production-2b44.up.railway.app/ask \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $AGENT_API_KEY" \
     -H "X-User-Id: sv-test" \
@@ -93,7 +93,7 @@ Rate limit 15 lần (user riêng cho phép đo):
 
 Đặt ảnh trong thư mục `screenshots/`:
 
-- `screenshots/health.png` — kết quả thật khi gọi `/health` của local fallback
+- `screenshots/health.png` — kết quả thật khi gọi `/health` của Railway service
 
 ---
 
@@ -108,8 +108,4 @@ Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng
    `http://localhost:8000`
 5. Ghi rõ lý do không deploy được vào phần dưới đây:
 
-Lý do dùng phương án dự phòng: môi trường làm bài hiện không có Railway CLI,
-Render session hoặc token đăng nhập cloud được cấu hình. Toàn bộ stack đã được
-build và kiểm chứng bằng Docker Compose với ba agent replica và một Redis dùng
-chung. Khi có quyền đăng nhập platform, có thể deploy cùng Dockerfile mà không
-cần thay đổi source code.
+Lý do dùng phương án dự phòng: Không áp dụng — bài lab đã được deploy lên Railway.
